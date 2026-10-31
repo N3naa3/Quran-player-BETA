@@ -20,7 +20,7 @@ jobs:
           flutter-version: 3.24.x
           channel: stable
 
-      - name: Generate Android Skeleton & Inject Permissions
+      - name: Generate Android Skeleton & Fix SDK
         run: |
           # 1. Extract app name from pubspec
           APP_NAME=$(grep -m1 '^name:' pubspec.yaml | awk '{print $2}' | tr -d '\r')
@@ -40,8 +40,12 @@ jobs:
           cp -r /tmp/lib_backup lib
           cp /tmp/pubspec_backup.yaml pubspec.yaml
           
-          # 6. Inject required permissions (Internet + Overlay for Azkar Pop-up)
-          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>\n    <application|' android/app/src/main/AndroidManifest.xml
+          # 6. FIX: Force compileSdk to 36 for newer plugins (audioplayers requires 35+)
+          sed -i 's/compileSdk flutter.compileSdkVersion/compileSdk 36/g' android/app/build.gradle
+          sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 36/g' android/app/build.gradle
+          
+          # 7. Inject Internet permission
+          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' android/app/src/main/AndroidManifest.xml
 
       - name: Get Dependencies
         run: flutter pub get
