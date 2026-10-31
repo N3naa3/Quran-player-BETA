@@ -1,8 +1,10 @@
+import 'dart:io'; // Added for File handling
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:path_provider/path_provider.dart'; // Added for saving to phone storage
 
 void main() {
   runApp(const QuranPlayerApp());
@@ -164,7 +166,6 @@ class _HomeScreenState extends State<HomeScreen> {
 class MushafScreen extends StatelessWidget {
   const MushafScreen({super.key});
 
-  // Compact list of all 114 Surahs
   final List<Map<String, String>> surahs = const [
     {"n": "1", "ar": "الفاتحة", "en": "Al-Fatiha"}, {"n": "2", "ar": "البقرة", "en": "Al-Baqarah"}, {"n": "3", "ar": "آل عمران", "en": "Aal-E-Imran"},
     {"n": "4", "ar": "النساء", "en": "An-Nisa"}, {"n": "5", "ar": "المائدة", "en": "Al-Ma'idah"}, {"n": "6", "ar": "الأنعام", "en": "Al-An'am"},
@@ -265,17 +266,13 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   }
 
   Future<void> _loadSurah() async {
-    // Step 1: Check if we already have this Surah saved locally
     final cachedText = await _loadFromCache(widget.number);
-    
     if (cachedText != null) {
-      // We have it cached! Load it instantly (no internet needed)
       setState(() {
         _quranText = cachedText;
         _isLoading = false;
       });
     } else {
-      // Not cached yet. Fetch from API and save it
       await _fetchAndCacheSurah();
     }
   }
@@ -284,7 +281,6 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     try {
       final directory = await getApplicationDocumentsDirectory();
       final file = File('${directory.path}/surah_$surahNumber.json');
-      
       if (await file.exists()) {
         final contents = await file.readAsString();
         final data = jsonDecode(contents);
@@ -299,16 +295,10 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
 
   Future<void> _fetchAndCacheSurah() async {
     try {
-      // Fetch from the verified API
       final response = await http.get(Uri.parse('https://api.alquran.cloud/v1/surah/${widget.number}/quran-uthmani'));
-      
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        
-        // Save to local cache for offline access
         await _saveToCache(widget.number, response.body);
-        
-        // Display the text
         final ayahs = data['data']['ayahs'] as List;
         setState(() {
           _quranText = ayahs.map((ayah) => ayah['text']).join('\n\n');
