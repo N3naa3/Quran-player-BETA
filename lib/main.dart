@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:system_alert_window/system_alert_window.dart';
 
 void main() {
   runApp(const QuranPlayerApp());
@@ -58,8 +57,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
         final name = result.files.single.name;
         
         await _audioPlayer.stop();
-        
-        // The magic line for local device files!
         await _audioPlayer.play(DeviceFileSource(path));
         
         setState(() {
@@ -85,38 +82,71 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
   }
 
-  // SYSTEM-LEVEL AZKAR POP-UP
-  Future<void> _showSystemAzkar() async {
-    bool? hasPermission = await SystemAlertWindow.checkPermissions;
-    if (!hasPermission!) {
-      await SystemAlertWindow.requestPermissions;
-      return; 
-    }
-
-    SystemAlertWindow.showWindow(
-      preference: SystemWindowPreference.BOTTOM_RIGHT,
-      widget: Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1A1512), 
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: const Color(0xFF8C6A4F), width: 2),
-        ),
-        child: const Text(
-          "لَا إِلَهَ إِلَّا اللَّهُ",
-          style: TextStyle(
-            color: Color(0xFFEAE0D5), 
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+  // BEAUTIFUL IN-APP AZKAR POP-UP
+  void _showAzkarPopup() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            margin: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A1512), // Dark background
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFF8C6A4F), width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.5),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.wb_sunny, color: Color(0xFF8C6A4F), size: 50),
+                const SizedBox(height: 16),
+                const Text(
+                  "Morning Azkar",
+                  style: TextStyle(
+                    color: Color(0xFFEAE0D5),
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  "أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ",
+                  style: TextStyle(
+                    color: Color(0xFFEAE0D5),
+                    fontSize: 22,
+                    height: 1.8,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8C6A4F),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    "آمين",
+                    style: TextStyle(color: Color(0xFF1A1512), fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                )
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
-
-    Future.delayed(const Duration(seconds: 5), () {
-      SystemAlertWindow.closeWindow();
-    });
   }
 
   @override
@@ -211,7 +241,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showSystemAzkar,
+        onPressed: _showAzkarPopup,
         backgroundColor: const Color(0xFF2A2522),
         icon: const Icon(Icons.notifications_active, color: Color(0xFFEAE0D5)),
         label: const Text("Test Azkar", style: TextStyle(color: Color(0xFFEAE0D5))),
