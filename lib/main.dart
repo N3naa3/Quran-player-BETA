@@ -244,7 +244,7 @@ class MushafScreen extends StatelessWidget {
   }
 }
 
-// --- SURAH DETAIL SCREEN (Fetches 100% Verified Text) ---
+// --- SURAH DETAIL SCREEN (With Offline Caching) ---
 class SurahDetailScreen extends StatefulWidget {
   final String number;
   final String name;
@@ -261,17 +261,55 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchSurah();
+    _loadSurah();
   }
 
-  Future<void> _fetchSurah() async {
+  Future<void> _loadSurah() async {
+    // Step 1: Check if we already have this Surah saved locally
+    final cachedText = await _loadFromCache(widget.number);
+    
+    if (cachedText != null) {
+      // We have it cached! Load it instantly (no internet needed)
+      setState(() {
+        _quranText = cachedText;
+        _isLoading = false;
+      });
+    } else {
+      // Not cached yet. Fetch from API and save it
+      await _fetchAndCacheSurah();
+    }
+  }
+
+  Future<String?> _loadFromCache(String surahNumber) async {
     try {
-      // Fetching from the globally verified, open-source Quran API
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/surah_$surahNumber.json');
+      
+      if (await file.exists()) {
+        final contents = await file.readAsString();
+        final data = jsonDecode(contents);
+        final ayahs = data['ayahs'] as List;
+        return ayahs.map((ayah) => ayah['text']).join('\n\n');
+      }
+    } catch (e) {
+      print("Cache read error: $e");
+    }
+    return null;
+  }
+
+  Future<void> _fetchAndCacheSurah() async {
+    try {
+      // Fetch from the verified API
       final response = await http.get(Uri.parse('https://api.alquran.cloud/v1/surah/${widget.number}/quran-uthmani'));
+      
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        
+        // Save to local cache for offline access
+        await _saveToCache(widget.number, response.body);
+        
+        // Display the text
         final ayahs = data['data']['ayahs'] as List;
-        // Join ayahs with double newline for beautiful readability
         setState(() {
           _quranText = ayahs.map((ayah) => ayah['text']).join('\n\n');
           _isLoading = false;
@@ -287,6 +325,17 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
         _quranText = "حدث خطأ في الاتصال.";
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _saveToCache(String surahNumber, String jsonData) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/surah_$surahNumber.json');
+      await file.writeAsString(jsonData);
+      print("✅ Surah $surahNumber cached locally");
+    } catch (e) {
+      print("Cache save error: $e");
     }
   }
 
