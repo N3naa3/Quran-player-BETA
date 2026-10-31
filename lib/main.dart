@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:system_alert_window/system_alert_window.dart';
 
 void main() {
   runApp(const QuranPlayerApp());
@@ -14,12 +15,13 @@ class QuranPlayerApp extends StatelessWidget {
     return MaterialApp(
       title: 'Quran Player',
       debugShowCheckedModeBanner: false,
+      // THE WELCOMING PARCHMENT THEME
       theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF121415),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFFD4AF37), // Matte Gold
-          surface: Color(0xFF1E2022),
+        brightness: Brightness.light, 
+        scaffoldBackgroundColor: const Color(0xFF2A2522), // Deep warm dark beige
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFF8C6A4F), // Warm bronze
+          surface: Color(0xFFEAE0D5), // Soft parchment beige
         ),
       ),
       home: const PlayerScreen(),
@@ -38,10 +40,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isPlaying = false;
   String _fileName = "No recitation selected";
+  String _filePath = "";
 
-  // 100% Verified Surah Al-Fatiha Text (Uthmani Script)
+  // 100% Verified Surah Al-Fatiha Text
   final String _quranText = "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ\nٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ\nٱلرَّحْمَـٰنِ ٱلرَّحِيمِ\nمَـٰلِكِ يَوْمِ ٱلدِّينِ\nإِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ\nٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ\nصِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ";
 
+  // FIX: Properly play local audio files from device storage
   Future<void> _pickFile() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -53,12 +57,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
         final path = result.files.single.path!;
         final name = result.files.single.name;
         
-        await _audioPlayer.setSourceUrl(path);
+        await _audioPlayer.stop();
+        
+        // The magic line for local device files!
+        await _audioPlayer.play(DeviceFileSource(path));
+        
         setState(() {
           _fileName = name;
+          _filePath = path;
           _isPlaying = true;
         });
-        await _audioPlayer.resume();
       }
     } catch (e) {
       print("Error picking file: $e");
@@ -66,6 +74,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Future<void> _togglePlayPause() async {
+    if (_filePath.isEmpty) return;
+    
     if (_isPlaying) {
       await _audioPlayer.pause();
       setState(() => _isPlaying = false);
@@ -75,56 +85,46 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
   }
 
-  // The Azkar Pop-up Logic
-  void _showAzkarPopup() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.transparent, // We use the container for the black bg
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.3)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Placeholder Image/Icon (Sun for morning, Moon for night)
-                const Icon(Icons.wb_sunny, color: Color(0xFFD4AF37), size: 60),
-                const SizedBox(height: 20),
-                const Text(
-                  "Morning Azkar",
-                  style: TextStyle(color: Color(0xFFD4AF37), fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                // Verified Morning Zikr Snippet
-                const Text(
-                  "أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ",
-                  style: TextStyle(color: Colors.white, fontSize: 22, height: 1.8),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text("Dismiss", style: TextStyle(color: Colors.white70, fontSize: 16)),
-                )
-              ],
-            ),
+  // SYSTEM-LEVEL AZKAR POP-UP
+  Future<void> _showSystemAzkar() async {
+    bool? hasPermission = await SystemAlertWindow.checkPermissions;
+    if (!hasPermission!) {
+      await SystemAlertWindow.requestPermissions;
+      return; 
+    }
+
+    SystemAlertWindow.showWindow(
+      preference: SystemWindowPreference.BOTTOM_RIGHT,
+      widget: Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1512), 
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: const Color(0xFF8C6A4F), width: 2),
+        ),
+        child: const Text(
+          "لَا إِلَهَ إِلَّا اللَّهُ",
+          style: TextStyle(
+            color: Color(0xFFEAE0D5), 
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
           ),
-        );
-      },
+        ),
+      ),
     );
+
+    Future.delayed(const Duration(seconds: 5), () {
+      SystemAlertWindow.closeWindow();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Quran Player", style: TextStyle(color: Color(0xFFD4AF37), fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
+        title: const Text("Quran Player", style: TextStyle(color: Color(0xFFEAE0D5), fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFF2A2522),
         elevation: 0,
         centerTitle: true,
       ),
@@ -133,20 +133,27 @@ class _PlayerScreenState extends State<PlayerScreen> {
           padding: const EdgeInsets.all(20.0),
           child: Column(
             children: [
-              // 1. Quran Text Display
+              // Quran Text Display (Parchment Style)
               Expanded(
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E2022),
+                    color: const Color(0xFFEAE0D5), 
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.2)),
+                    border: Border.all(color: const Color(0xFF8C6A4F), width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
                   ),
                   child: SingleChildScrollView(
                     child: Text(
                       _quranText,
-                      style: const TextStyle(color: Colors.white, fontSize: 26, height: 2.0),
+                      style: const TextStyle(color: Color(0xFF1A1512), fontSize: 26, height: 2.0, fontWeight: FontWeight.w500),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -154,22 +161,33 @@ class _PlayerScreenState extends State<PlayerScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 2. Audio Player Controls
+              // Audio Player Controls
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E2022),
-                  borderRadius: BorderRadius.circular(12),
+                  color: const Color(0xFFEAE0D5), 
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF8C6A4F), width: 2),
                 ),
                 child: Column(
                   children: [
-                    Text(_fileName, style: const TextStyle(color: Colors.white70, fontSize: 16), textAlign: TextAlign.center),
+                    Text(
+                      _fileName,
+                      style: const TextStyle(color: Color(0xFF1A1512), fontSize: 18, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         IconButton(
-                          icon: Icon(_isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill, size: 50, color: const Color(0xFFD4AF37)),
+                          icon: Icon(
+                            _isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill,
+                            size: 50,
+                            color: const Color(0xFF8C6A4F),
+                          ),
                           onPressed: _togglePlayPause,
                         ),
                         const SizedBox(width: 20),
@@ -178,8 +196,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           icon: const Icon(Icons.folder_open, size: 20),
                           label: const Text("Select Audio"),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2E7D32),
-                            foregroundColor: Colors.white,
+                            backgroundColor: const Color(0xFF2A2522), 
+                            foregroundColor: const Color(0xFFEAE0D5),
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                           ),
                         ),
                       ],
@@ -191,12 +210,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
           ),
         ),
       ),
-      // 3. Floating Action Button to Test Azkar Pop-up
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAzkarPopup,
-        backgroundColor: const Color(0xFF1E2022),
-        icon: const Icon(Icons.notifications_active, color: Color(0xFFD4AF37)),
-        label: const Text("Test Azkar", style: TextStyle(color: Colors.white)),
+        onPressed: _showSystemAzkar,
+        backgroundColor: const Color(0xFF2A2522),
+        icon: const Icon(Icons.notifications_active, color: Color(0xFFEAE0D5)),
+        label: const Text("Test Azkar", style: TextStyle(color: Color(0xFFEAE0D5))),
       ),
     );
   }
