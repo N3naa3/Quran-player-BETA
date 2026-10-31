@@ -31,9 +31,8 @@ jobs:
           cp -r /tmp/lib_backup lib
           cp /tmp/pubspec_backup.yaml pubspec.yaml
           
-          # Force compileSdk to 36 for newer plugins
-          sed -i 's/compileSdk flutter.compileSdkVersion/compileSdk 36/g' android/app/build.gradle
-          sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 36/g' android/app/build.gradle
+          # Force compileSdk to 35 to satisfy newer plugins (audioplayers, etc.)
+          sed -i 's/flutter.compileSdkVersion/35/g' android/app/build.gradle
           sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' android/app/src/main/AndroidManifest.xml
           
           # MAGIC: Replace default blue icon with your custom icon.png
