@@ -11,7 +11,7 @@ dependencies:
     sdk: flutter
   audioplayers: ^6.0.0
   file_picker: ^8.0.0+1
-  system_alert_window: ^0.9.1
+  system_alert_window: ^2.0.11
   permission_handler: ^11.0.0
 
 dev_dependencies:
